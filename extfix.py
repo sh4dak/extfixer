@@ -7,15 +7,7 @@ from pathlib import Path
 import argparse
 import logging
 
-parser = argparse.ArgumentParser(description="Extension fixer.\nUtility to fix your files' extensions.")
-parser.add_argument('paths', metavar='PATH', type=Path, nargs='+', help='Path argument(s)')
-parser.add_argument('-d', '--depth', type=int, metavar='X', default=1, help = 'depth of recursion for directories (default is 1)')
-parser.add_argument('-v', '--verbose', action="store_true", help = "shows changes in your files")
-args = parser.parse_args()
 
-paths = args.paths
-verbose = args.verbose
-depth = args.depth-1
 
 log = logging.getLogger(__name__)
 
@@ -100,7 +92,22 @@ def recursive_dirlist_builder(path, arr, count):
         for x in ps:
             return recursive_dirlist_builder(x, arr, count-1)
 
-arr = paths
-for x in paths:
-    arr.extend(recursive_dirlist_builder(x, [], depth))
-print(mime_parser(arr))
+# 1. код /исполнения/ скрипта лучше ставить в таком блоке,
+# чтобы при `import extfix` они не вызывались
+if __name__ == "__main__":
+    # 2. метавар необязателен, хотя это и вкусовщина
+    parser = argparse.ArgumentParser(description="Utility to fix your files' extensions.")
+    parser.add_argument('paths', type=Path, nargs='+', help='Path argument(s)')
+    # 3. при вызове метода пробелы между параметром и его значением
+    # (help = ...) плохой тон
+    parser.add_argument('-d', '--depth', type=int, default=1, help='depth of recursion for directories (default is 1)')
+    parser.add_argument('-v', '--verbose', action="store_true", help="shows changes in your files")
+    args = parser.parse_args()
+
+    # 4. чтобы не рисковать вляпаться, лучше arr создать как копию от
+    # оригинального paths, после чего проходиться по оригиналу.
+    # так мы будем уверены, что он не будет меняться во время итерации по нему
+    arr = args.paths.copy()
+    for x in args.paths:
+        arr.extend(recursive_dirlist_builder(x, [], args.depth))
+    print(mime_parser(arr))
