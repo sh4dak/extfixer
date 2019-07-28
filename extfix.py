@@ -33,12 +33,10 @@ class NotInDictionaryException(Exception):
 class ArgumentException(Exception):
     pass
 
-
 # если создать массив через фигурные скобки,
 # типа как словарь без значений, то получится множество (set),
 # к которому операция `x in set(...)` проходит гораздо быстрее
 FILENAME_PROHIBITED = {"<", ">", ":", '"', "\\", "|", "?", "*"}
-
 
 def get_ext(file):
     # если нужно получить из пути имя файла:
@@ -78,7 +76,6 @@ def check_ext(file):
     ext = get_ext(file)
     return extr == ext
 
-
 def change_ext(file: Path):
     log.info("Processing file %s", file)
     extr = true_ext(file)
@@ -88,6 +85,7 @@ def change_ext(file: Path):
     newpath = file.parent /  f"{file_noext}.{extr or ext}"
     log.info("Renaming to %s", newpath.name)
     file.rename(newpath)
+
 
 
 def mime_parser(arr):
