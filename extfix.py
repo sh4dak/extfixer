@@ -3,7 +3,6 @@
 # System libraries
 import argparse
 from pathlib import Path
-import os
 import logging
 
 # External libraries
@@ -12,7 +11,7 @@ import magic as fm
 
 log = logging.getLogger(__name__)
 
-extsDict = {
+exts_dict = {
     "image/png": "png",
     "image/gif": "gif",
     "image/jpeg": "jpg",
@@ -21,8 +20,6 @@ extsDict = {
     "application/vnd.rar": "rar",
     "application/x-7z-compressed": "7z",
 }
-
-extsBlacklist = ["inode/directory"]
 
 
 class BadFilenameException(Exception):
@@ -36,16 +33,20 @@ class NotInDictionaryException(Exception):
 class ArgumentException(Exception):
     pass
 
-
-FILENAME_PROHIBITED = ("<", ">", ":", '"', "\\", "|", "?", "*")
-
+# если создать массив через фигурные скобки,
+# типа как словарь без значений, то получится множество (set),
+# к которому операция `x in set(...)` проходит гораздо быстрее
+FILENAME_PROHIBITED = {"<", ">", ":", '"', "\\", "|", "?", "*"}
 
 def get_ext(file):
-    f = file.parts[-1]
-    if any(i in f for i in FILENAME_PROHIBITED):
+    # если нужно получить из пути имя файла:
+    # print(file.name)
+    name = file.parts[-1]
+    if any(i in name for i in FILENAME_PROHIBITED):
         raise BadFilenameException()
-    buf = f.split(".")
+    buf = name.split(".")
     if len(buf) > 1:
+        # что, если у файла два расширения (.tar.gz)?
         return buf[1]
     else:
         return ""
@@ -53,13 +54,17 @@ def get_ext(file):
 
 def true_ext(file):
     mime = fm.detect_from_filename(file).mime_type
-    if mime in extsDict:
-        return extsDict[mime]
-    elif mime in extsBlacklist:
-        # по-хорошему лучше здесь бросать исключение,
-        # и обрабатывать его в check_ext
-        # raise FileInBlacklist()
-        return "blacklisted"
+    # у dict есть метод .get(), который возвращает значение,
+    # или None, если такого ключа не нашлось
+    # фишка в том, что он не бросает исключение при неудаче,
+    # и None можно с лёгкостью проверить в if
+    # здесь это не критично, но на будущее вот
+    # true_ext = exts_dict.get(mime)
+    # if true_ext:
+    #     return true_ext
+    if mime in exts_dict:
+        log.info("Real extension: %s", exts_dict[mime])
+        return exts_dict[mime]
     else:
         raise NotInDictionaryException()
 
@@ -71,23 +76,23 @@ def check_ext(file):
     ext = get_ext(file)
     return extr == ext
 
-
-def change_ext(file):
+def change_ext(file: Path):
+    log.info("Processing file %s", file)
     extr = true_ext(file)
     ext = get_ext(file)
-    if not ext:
-        newpath = Path(str(file)[: -len(ext)] + extr)
-    else:
-        newpath = Path(str(file) + "." + extr)
+    breakpoint()
+    file_noext = file.stem # имя файла, без последнего расширения
+    newpath = file.parent /  f"{file_noext}.{extr or ext}"
+    log.info("Renaming to %s", newpath.name)
     file.rename(newpath)
-    return newpath.parts[-1]
+
 
 
 def mime_parser(arr):
     files_to_parse = []
     for x in arr:
         for child in x.iterdir():
-            if check_ext(child) == False:
+            if not check_ext(child):
                 files_to_parse.append(child)
     for file in files_to_parse:
         change_ext(file)
@@ -100,25 +105,22 @@ def recursive_dirlist_builder(path, arr, count):
     ps = []
     for child in path.iterdir():
         if child.is_dir():
+            log.info("Appending %s to the search list", child)
             ps.append(child)
     arr.extend(ps)
     if not count or not ps:
         return arr
     else:
         for x in ps:
+            log.info("Going into folder %s", x)
             return recursive_dirlist_builder(x, arr, count - 1)
 
 
-# 1. код /исполнения/ скрипта лучше ставить в таком блоке,
-# чтобы при `import extfix` они не вызывались
 if __name__ == "__main__":
-    # 2. метавар необязателен, хотя это и вкусовщина
     parser = argparse.ArgumentParser(
         description="Utility to fix your files' extensions."
     )
     parser.add_argument("paths", type=Path, nargs="+", help="Path argument(s)")
-    # 3. при вызове метода пробелы между параметром и его значением
-    # (help = ...) плохой тон
     parser.add_argument(
         "-d",
         "--depth",
@@ -131,10 +133,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # 4. чтобы не рисковать вляпаться, лучше arr создать как копию от
-    # оригинального paths, после чего проходиться по оригиналу.
-    # так мы будем уверены, что он не будет меняться во время итерации по нему
+    # формат сообщений в логе. полный перечень переменных здесь:
+    # https://docs.python.org/3/library/logging.html#logrecord-attributes
+    log_format = "%(levelname)s %(message)s"
+    logging.basicConfig(format=log_format)
+    # если передали --verbose, то логгер выводит
+    # все сообщения уровнем INFO и выше,
+    # в остальных случаях сообщаем только о WARN и ERROR
+    log.setLevel(logging.INFO if args.verbose else logging.WARN)
+
     arr = args.paths.copy()
     for x in args.paths:
         arr.extend(recursive_dirlist_builder(x, [], args.depth))
-    print(mime_parser(arr))
+    log.info("Done.")
+    mime_parser(arr)
