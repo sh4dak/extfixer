@@ -6,6 +6,9 @@ sys.path.append(str(Path(__file__).parent.parent))
 import extfix
 
 
+JPEG_BIN = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00x'
+
+
 def pytest_configure():
     # enable debug logging in all tests
     extfix.log.setLevel(logging.DEBUG)
@@ -19,3 +22,10 @@ def test_dirbuilder(tmp_path):
     arr = [tmp_path]
     arr.extend(extfix.recursive_dirlist_builder(tmp_path, [], 3))
     assert len(arr) == 5 # five folders in total
+
+
+def test_guesser(tmp_path):
+    jpg = tmp_path / "test.jpeg"
+    with jpg.open("wb") as fd:
+        fd.write(JPEG_BIN)
+    assert extfix.true_ext(jpg) == "jpg"
