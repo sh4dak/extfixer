@@ -29,3 +29,21 @@ def test_guesser(tmp_path):
     with jpg.open("wb") as fd:
         fd.write(JPEG_BIN)
     assert extfix.true_ext(jpg) == "jpg"
+
+def test_folder_exception(tmp_path):
+    jpg1 = tmp_path / "test.gif"
+    with jpg1.open("wb") as fd:
+        fd.write(JPEG_BIN)
+    dir1 = tmp_path / "dir1"
+    dir2 = dir1 / "dir2"
+    dir4 = dir1 / "dir3" / "dir4"
+    all([x.mkdir(parents=True) for x in (dir1, dir2, dir4)])
+    jpg2 = dir4 / "test.png"
+    with jpg2.open("wb") as fd:
+        fd.write(JPEG_BIN)
+    jpg3 = dir2 / "test.tiff"
+    with jpg2.open("wb") as fd:
+        fd.write(JPEG_BIN)        
+    arr = [tmp_path]
+    arr.extend(extfix.recursive_dirlist_builder(tmp_path, [], 3))
+    assert extfix.mime_parser(arr) == "Finished."
