@@ -31,7 +31,7 @@ def test_guesser(tmp_path, name):
     jpg = tmp_path / name
     with jpg.open("wb") as fd:
         fd.write(JPEG_BIN)
-    assert extfix.true_ext(jpg) == "jpg"
+    assert extfix.FileFixer(jpg).real_extension() == "jpg"
 
 def test_folder_exception(tmp_path):
     jpg1 = tmp_path / "test.gif"
@@ -49,4 +49,4 @@ def test_folder_exception(tmp_path):
         fd.write(JPEG_BIN)        
     arr = [tmp_path]
     arr.extend(extfix.recursive_dirlist_builder(tmp_path, [], 3))
-    assert extfix.mime_parser(arr) == "Finished."
+    extfix.fix_all(arr)
