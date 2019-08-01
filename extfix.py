@@ -33,70 +33,58 @@ class NotInDictionaryException(Exception):
 class ArgumentException(Exception):
     pass
 
+
 # если создать массив через фигурные скобки,
 # типа как словарь без значений, то получится множество (set),
 # к которому операция `x in set(...)` проходит гораздо быстрее
 FILENAME_PROHIBITED = {"<", ">", ":", '"', "\\", "|", "?", "*"}
 
-def get_ext(file):
-    # если нужно получить из пути имя файла:
-    # print(file.name)
-    name = file.parts[-1]
-    if any(i in name for i in FILENAME_PROHIBITED):
-        raise BadFilenameException()
-    buf = name.split(".")
-    if len(buf) > 1:
-        # что, если у файла два расширения (.tar.gz)?
-        return buf[1]
-    else:
-        return ""
 
+class FileFixer:
+    def __init__(self, file: Path):
+        self.file = file
+        if any(i in file.name for i in FILENAME_PROHIBITED):
+            raise BadFilenameException(file)
 
-def true_ext(file):
-    mime = fm.detect_from_filename(file).mime_type
-    # у dict есть метод .get(), который возвращает значение,
-    # или None, если такого ключа не нашлось
-    # фишка в том, что он не бросает исключение при неудаче,
-    # и None можно с лёгкостью проверить в if
-    # здесь это не критично, но на будущее вот
-    # true_ext = exts_dict.get(mime)
-    # if true_ext:
-    #     return true_ext
-    if mime in exts_dict:
-        log.info("Real extension: %s", exts_dict[mime])
-        return exts_dict[mime]
-    else:
-        raise NotInDictionaryException()
+    def current_extension(self) -> str:
+        return self.file.suffix[1:]
 
+    def real_extension(self) -> str:
+        if self.file.is_dir():
+            raise IsADirectoryError(self.file)
+        mime = fm.detect_from_filename(self.file).mime_type
+        true_ext = exts_dict.get(mime)
+        if true_ext:
+            log.info("Real extension: %s", exts_dict[mime])
+            return true_ext
+        raise NotInDictionaryException(self.file)
 
-def check_ext(file):
-    extr = true_ext(file)
-    if extr == "blacklisted":
-        return True
-    ext = get_ext(file)
-    return extr == ext
+    def extension_correct(self):
+        """
+        Returns True if extension is correct,
+        otherwise returns real extension.
+        """
+        real_ext = self.real_extension()
+        if real_ext == "blacklisted" or real_ext == self.current_extension():
+            return True
+        return real_ext
 
-def change_ext(file: Path):
-    log.info("Processing file %s", file)
-    extr = true_ext(file)
-    ext = get_ext(file)
-    breakpoint()
-    file_noext = file.stem # имя файла, без последнего расширения
-    newpath = file.parent /  f"{file_noext}.{extr or ext}"
-    log.info("Renaming to %s", newpath.name)
-    file.rename(newpath)
+    def change_ext(self, ext: str):
+        log.info("Processing file %s", self.file)
+        ext = self.real_extension
+        file_noext = self.file.stem  # имя файла, без последнего расширения
+        newpath = self.file.parent / f"{file_noext}.{ext}"
+        log.info("Renaming to %s", newpath.name)
+        self.file.rename(newpath)
 
+    def fix(self):
+        real = self.extension_correct()
+        if real is not True:
+            self.change_ext(real)
 
-
-def mime_parser(arr):
-    files_to_parse = []
-    for x in arr:
-        for child in x.iterdir():
-            if not check_ext(child):
-                files_to_parse.append(child)
-    for file in files_to_parse:
-        change_ext(file)
-    return "Finished."
+    # для корректного отображения объекта при дебаге
+    def __repr__(self):
+        return f"FileFixer({self.file!r})"
 
 
 def recursive_dirlist_builder(path, arr, count):
@@ -114,6 +102,13 @@ def recursive_dirlist_builder(path, arr, count):
         for x in ps:
             log.info("Going into folder %s", x)
             return recursive_dirlist_builder(x, arr, count - 1)
+
+
+def fix_all(files):
+    for file in files:
+        if file.is_dir():
+            continue
+        FileFixer(file).fix()
 
 
 if __name__ == "__main__":
@@ -145,5 +140,5 @@ if __name__ == "__main__":
     arr = args.paths.copy()
     for x in args.paths:
         arr.extend(recursive_dirlist_builder(x, [], args.depth))
+    fix_all(arr)
     log.info("Done.")
-    mime_parser(arr)
