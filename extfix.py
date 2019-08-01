@@ -80,7 +80,6 @@ def change_ext(file: Path):
     log.info("Processing file %s", file)
     extr = true_ext(file)
     ext = get_ext(file)
-    breakpoint()
     file_noext = file.stem # имя файла, без последнего расширения
     newpath = file.parent /  f"{file_noext}.{extr or ext}"
     log.info("Renaming to %s", newpath.name)
@@ -92,7 +91,7 @@ def mime_parser(arr):
     files_to_parse = []
     for x in arr:
         for child in x.iterdir():
-            if not check_ext(child):
+            if not child.is_dir() and not check_ext(child):
                 files_to_parse.append(child)
     for file in files_to_parse:
         change_ext(file)
