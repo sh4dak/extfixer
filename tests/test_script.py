@@ -33,6 +33,7 @@ def test_guesser(tmp_path, name):
         fd.write(JPEG_BIN)
     assert extfix.FileFixer(jpg).real_extension() == "jpg"
 
+
 def test_folder_exception(tmp_path):
     jpg1 = tmp_path / "test.gif"
     with jpg1.open("wb") as fd:
