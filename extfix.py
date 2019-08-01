@@ -93,7 +93,7 @@ def recursive_dirlist_builder(path, arr, count):
     ps = []
     for child in path.iterdir():
         if child.is_dir():
-            log.info("Appending %s to the search list", child)
+            log.info("Appending %s directory to the search list", child)
             ps.append(child)
     arr.extend(ps)
     if not count or not ps:
@@ -103,11 +103,15 @@ def recursive_dirlist_builder(path, arr, count):
             log.info("Going into folder %s", x)
             return recursive_dirlist_builder(x, arr, count - 1)
 
-
-def fix_all(files):
+def fix_all(directories):
+    files = []
+    for dir in directories:
+        for child in dir.iterdir():
+            if child.is_dir():
+                continue
+            log.info("Appending %s file to the search list", child)
+            files.append(child)
     for file in files:
-        if file.is_dir():
-            continue
         FileFixer(file).fix()
 
 
