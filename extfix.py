@@ -71,7 +71,7 @@ class FileFixer:
 
     def change_ext(self, ext: str):
         log.info("Processing file %s", self.file)
-        ext = self.real_extension
+        ext = self.real_extension()
         file_noext = self.file.stem  # имя файла, без последнего расширения
         newpath = self.file.parent / f"{file_noext}.{ext}"
         log.info("Renaming to %s", newpath.name)
