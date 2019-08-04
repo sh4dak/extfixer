@@ -12,20 +12,9 @@ import magic as fm
 
 log = logging.getLogger(__name__)
 
-#exts_dict = {
-#    "image/png": "png",
-#    "image/gif": "gif",
-#    "image/jpeg": "jpg",
-#    "text/html": "html",
-#    "application/zip": "zip",
-#    "application/vnd.rar": "rar",
-#    "application/x-7z-compressed": "7z",
-#}
-
 with open('extensions.csv', mode='r') as file:
     reader = csv.reader(file)
     exts_dict = {rows[0]:rows[1] for rows in reader}
-print(exts_dict)
 
 
 class BadFilenameException(Exception):
